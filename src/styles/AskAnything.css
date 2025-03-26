@@ -127,10 +127,18 @@ body {
   align-self: flex-start;
 }
 
+.message.user {
+  align-self: flex-end;
+}
+
 .message-content {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+}
+
+.message.user .message-content {
+  flex-direction: row-reverse;
 }
 
 .message-bubble {
@@ -143,6 +151,13 @@ body {
   color: #2d3748;
   border: 1px solid #e2e8f0;
   border-bottom-left-radius: 4px;
+}
+
+.message.user .message-bubble {
+  background-color: #4a5568;
+  color: white;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 4px;
 }
 
 .user-icon,

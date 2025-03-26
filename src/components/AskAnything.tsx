@@ -318,33 +318,10 @@ const AskAnything: React.FC = () => {
     }
   };
 
-  // Function to truncate long messages
-  const truncateContent = (content: string, maxLength: number = 800): string => {
-    if (content.length <= maxLength) return content;
-    return content.substring(0, maxLength) + "...";
-  };
-
-  // Toggle message expansion
-  const toggleMessageExpansion = (id: number) => {
-    setMessages(messages.map(msg => 
-      msg.id === id ? { ...msg, isExpanded: !msg.isExpanded } : msg
-    ));
-  };
-
   const renderMessage = (message: Message) => {
     if (message.type === "assistant" && message.fileName) {
       currentFileNameRef.current = message.fileName;
     }
-
-    // Determine if message should be truncated
-    const isLongMessage = message.type === "assistant" && 
-                          !message.isLegalDraft && 
-                          message.content.length > 800;
-    
-    // Get the content to display (truncated or full)
-    const displayContent = isLongMessage && !message.isExpanded 
-      ? truncateContent(message.content) 
-      : message.content;
 
     return (
       <div className={`message ${message.type}`}>
@@ -398,23 +375,13 @@ const AskAnything: React.FC = () => {
                 Here is your draft: <span className="view-draft-link">(Click to view)</span>
               </div>
             ) : (
-              <>
-                <div
-                  className="message-content-text"
-                  dangerouslySetInnerHTML={createMarkup(
-                    displayContent,
-                    message.fileName
-                  )}
-                />
-                {isLongMessage && (
-                  <button 
-                    className="show-more-button"
-                    onClick={() => toggleMessageExpansion(message.id)}
-                  >
-                    {message.isExpanded ? "Show Less" : "Show More"}
-                  </button>
+              <div
+                className="message-content-text"
+                dangerouslySetInnerHTML={createMarkup(
+                  message.content,
+                  message.fileName
                 )}
-              </>
+              />
             )}
           </div>
         </div>
