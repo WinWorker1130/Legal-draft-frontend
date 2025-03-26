@@ -1,6 +1,4 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
-import { useNavigate } from "react-router-dom";
-import PatientSelectPopup from "./PatientSelectPopup.tsx";
 import "../styles/AskAnything.css";
 import LoadingAnimation from "./LoadingAnimation.tsx";
 import { API_URL } from "../utils/utils.js";
@@ -48,21 +46,17 @@ const AskAnything: React.FC = () => {
     fetchChatHistories
   } = useContext(AppContext);
 
-  const [showPatientSelect, setShowPatientSelect] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
   const currentFileNameRef = useRef<string>("");
   const [componentLoading, setComponentLoading] = useState(true);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
-  const [selectedPage, setSelectedPage] = useState<string | null>(null);
   const [selectedDraft, setSelectedDraft] = useState<string | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [chatHistoryId, setChatHistoryId] = useState<string | null>(null);
-  const [tempId, setTempId] = useState<string | null>(null);
 
   const searchParams = new URLSearchParams(window.location.search);
   const chatId = searchParams.get('chat');
@@ -84,33 +78,6 @@ const AskAnything: React.FC = () => {
     }, 1500); // 1.5 seconds delay
 
     return () => clearTimeout(timer);
-  }, []);
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
-  useEffect(() => {
-    // Always show a welcome message, even if no patient is selected
-    setMessages([
-      {
-        id: 1,
-        type: "system",
-        content: `Hi, I'm your legal assistant, how can I help you today?`,
-      },
-    ]);
-  }, [selectedPatient]);
-
-  // useEffect(() => {
-  //   scrollToBottom();
-  // }, [messages]);
-
-  useEffect(() => {
-    const patient = localStorage.getItem("askPatient");
-    localStorage.setItem("selectedPatient", String(patient));
-    if (curPatient) {
-      setAskPatient(curPatient);
-    }
   }, []);
 
   // Handle new chat initialization
@@ -187,15 +154,22 @@ const AskAnything: React.FC = () => {
   // Effect to handle URL changes and direct chat ID loading
   useEffect(() => {
     const loadChatFromUrl = async () => {
-      console.log("loadChatFromUrl called, chatId:", chatId, "previous chatHistoryId:", chatHistoryId);
+      // Only log in development to avoid console spam
+      if (process.env.NODE_ENV !== 'production') {
+        console.log("loadChatFromUrl called, chatId:", chatId, "previous chatHistoryId:", chatHistoryId);
+      }
       
-      // Always load chat history if chatId is not null
-      if (chatId !== null) {
-        console.log("Loading chat history for chatId:", chatId);
+      // Only load chat history if chatId is not null and different from current chatHistoryId
+      if (chatId !== null && chatId !== chatHistoryId) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log("Loading chat history for chatId:", chatId);
+        }
         setChatHistoryId(chatId);
         
         try {
-          console.log("Fetching chat history from API...");
+          if (process.env.NODE_ENV !== 'production') {
+            console.log("Fetching chat history from API...");
+          }
           const response = await fetch(`${API_URL}/chat-history/conversation/${chatId}`);
           
           if (!response.ok) {
@@ -203,10 +177,12 @@ const AskAnything: React.FC = () => {
           }
           
           const history = await response.json();
-          console.log("Received chat history from API:", history);
+          
+          if (process.env.NODE_ENV !== 'production') {
+            console.log("Received chat history from API");
+          }
           
           if (history && history.messages && history.messages.length > 0) {
-            console.log("Setting messages directly from API response:", history.messages);
             // Create a new array to ensure React detects the change
             const newMessages = history.messages.map((msg, index) => ({
               id: index + 1,
@@ -222,7 +198,9 @@ const AskAnything: React.FC = () => {
             const updatedHistory = JSON.parse(JSON.stringify(history));
             setCurrentChatHistory(updatedHistory);
           } else {
-            console.log("No messages found in chat history or history is null");
+            if (process.env.NODE_ENV !== 'production') {
+              console.log("No messages found in chat history or history is null");
+            }
             // Set a default message if no messages found
             setMessages([
               {
@@ -257,24 +235,6 @@ const AskAnything: React.FC = () => {
     };
   }, [chatId, API_URL, setCurrentChatHistory, chatHistoryId]);
 
-  const handleBadgeClick = (pageNumber: string) => {
-    setPdfUrl(null);
-    const tmp = currentFileNameRef.current;
-    let fileName = tmp.replace(/_\d{8}_\d{6}\.txt$/, "").replace(/_/g, " ");
-    if (!fileName) {
-      console.error("No filename available");
-      return;
-    }
-
-    setTimeout(() => {
-      const url = `${API_URL}/files/view-pdf?filename=${encodeURIComponent(
-        fileName
-      )}#page=${pageNumber}`;
-      setPdfUrl(url); // Update the PDF URL after the delay
-      setSelectedPage(pageNumber); // Set the selected page after the delay
-    }, 200);
-  };
-
   const createMarkup = (content: string, fileName: string | undefined) => {
     if (!content) return { __html: "" };
 
@@ -282,7 +242,7 @@ const AskAnything: React.FC = () => {
       /(?:\(page\s*(\d+)\)|\(p\.?\s*(\d+)\)|\((\d+)\))/gi,
       (_, p1, p2, p3) => {
         const pageNum = p1 || p2 || p3;
-        return `<span class="page-badge" data-page="${pageNum}">${pageNum}</span>`;
+        return `<span>${pageNum}</span>`;
       }
     );
 
@@ -445,15 +405,6 @@ const AskAnything: React.FC = () => {
                     displayContent,
                     message.fileName
                   )}
-                  onClick={(e) => {
-                    const target = e.target as HTMLElement;
-                    if (target.classList.contains("page-badge")) {
-                      const pageNumber = target.getAttribute("data-page");
-                      if (pageNumber) {
-                        handleBadgeClick(pageNumber);
-                      }
-                    }
-                  }}
                 />
                 {isLongMessage && (
                   <button 

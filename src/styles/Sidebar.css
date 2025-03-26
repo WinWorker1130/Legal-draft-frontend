@@ -1,0 +1,48 @@
+/* Sidebar.css */
+
+.sidebar {
+  position: relative; /* Ensure the loading animation is positioned relative to the sidebar */
+}
+
+.chat-history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-right: 8px;
+}
+
+.chat-item-content {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.delete-chat-button {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: opacity 0.2s, color 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-history-item:hover .delete-chat-button {
+  opacity: 1;
+}
+
+.delete-chat-button:hover {
+  color: #e53935;
+}
+
+/* Adjust the loading container for sidebar */
+.sidebar .loading-container {
+  left: 0; /* Override the default left position */
+  background-color: rgba(248, 249, 250, 0.8); /* Semi-transparent background */
+  z-index: 1100; /* Ensure it appears above other sidebar elements */
+}

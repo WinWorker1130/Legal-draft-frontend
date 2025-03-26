@@ -1,9 +1,12 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faQuestionCircle, faComment } from "@fortawesome/free-solid-svg-icons";
+import { faQuestionCircle, faComment, faTrash } from "@fortawesome/free-solid-svg-icons";
 import { AppContext } from "../context/AppContext";
 import { API_URL } from "../utils/utils";
+import ConfirmationModal from "./ConfirmationModal.tsx";
+import LoadingAnimation from "./LoadingAnimation.tsx";
+import "../styles/Sidebar.css";
 
 interface ChatHistory {
   _id: string;
@@ -22,31 +25,41 @@ interface ChatHistoryGroups {
 }
 
 const Sidebar: React.FC = () => {
-  const { patients, fetchPatients } = useContext(AppContext);
   const { 
     isNewChat, setNewChat,
-    curPatient, setCurPatient, 
     setCurResult, 
     chatHistories, fetchChatHistories, loadChatHistory,
-    setCurrentChatHistory
+    setCurrentChatHistory, deleteChatHistory
   } = useContext(AppContext);
 
-  const [isPatientListOpen, setIsPatientListOpen] = useState<boolean>(() => {
-    const savedState = localStorage.getItem("patientToggle");
-    if (savedState === "true") return true;
-    else return false;
-  });
-  const [isManagementOpen, setIsManagementOpen] = useState<boolean>(() => {
-    const savedState = localStorage.getItem("resultToggle");
-    return savedState === "true";
-  });
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [historyCroup, setHistoryGroup] = useState<ChatHistoryGroups>();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const navigate = useNavigate();
-  // Group chat histories by date
-  const groupChatHistoriesByDate = () => {
-    console.log("groupChatHistoriesByDate called, chatHistories:", chatHistories);
+  // Group chat histories by date - memoized with useCallback to prevent recreation on every render
+  const groupChatHistoriesByDate = useCallback(() => {
+    // Only log in development to avoid console spam
+    if (process.env.NODE_ENV !== 'production') {
+      console.log("groupChatHistoriesByDate called, chatHistories length:", 
+        Array.isArray(chatHistories) ? chatHistories.length : 'not an array');
+    }
+    
+    // Skip processing if chatHistories is not valid
+    if (!chatHistories || !Array.isArray(chatHistories) || chatHistories.length === 0) {
+      // Only set empty groups if historyCroup is undefined (initial state)
+      if (!historyCroup) {
+        setHistoryGroup({
+          today: [],
+          yesterday: [],
+          previousWeek: [],
+          older: []
+        });
+      }
+      return;
+    }
     
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -64,40 +77,76 @@ const Sidebar: React.FC = () => {
       older: []
     };
     
-    if (chatHistories && Array.isArray(chatHistories)) {
-      console.log("Processing chat histories array, length:", chatHistories.length);
+    // Process each chat history
+    chatHistories.forEach((chat: ChatHistory) => {
+      const chatDate = new Date(chat.updatedAt);
+      chatDate.setHours(0, 0, 0, 0);
       
-      chatHistories.forEach((chat: ChatHistory) => {
-        console.log("Processing chat:", chat._id, chat.title);
-        const chatDate = new Date(chat.updatedAt);
-        chatDate.setHours(0, 0, 0, 0);
-        
-        if (chatDate.getTime() === today.getTime()) {
-          console.log("Adding to today:", chat.title);
-          groups.today.push(chat);
-        } else if (chatDate.getTime() === yesterday.getTime()) {
-          console.log("Adding to yesterday:", chat.title);
-          groups.yesterday.push(chat);
-        } else if (chatDate >= oneWeekAgo) {
-          console.log("Adding to previous week:", chat.title);
-          groups.previousWeek.push(chat);
-        } else {
-          console.log("Adding to older:", chat.title);
-          groups.older.push(chat);
-        }
-      });
-    } else {
-      console.warn("chatHistories is not an array or is null:", chatHistories);
-    }
-    
-    console.log("Final groups:", {
-      today: groups.today.length,
-      yesterday: groups.yesterday.length,
-      previousWeek: groups.previousWeek.length,
-      older: groups.older.length
+      if (chatDate.getTime() === today.getTime()) {
+        groups.today.push(chat);
+      } else if (chatDate.getTime() === yesterday.getTime()) {
+        groups.yesterday.push(chat);
+      } else if (chatDate >= oneWeekAgo) {
+        groups.previousWeek.push(chat);
+      } else {
+        groups.older.push(chat);
+      }
     });
     
-    setHistoryGroup(groups);
+    // Only update state if the groups have actually changed
+    const hasChanged = !historyCroup || 
+      groups.today.length !== historyCroup.today.length ||
+      groups.yesterday.length !== historyCroup.yesterday.length ||
+      groups.previousWeek.length !== historyCroup.previousWeek.length ||
+      groups.older.length !== historyCroup.older.length;
+    
+    if (hasChanged) {
+      setHistoryGroup(groups);
+    }
+  }, [chatHistories, historyCroup]);
+
+  // Handle delete button click
+  const handleDeleteClick = (e: React.MouseEvent, chatId: string) => {
+    e.stopPropagation(); // Prevent triggering the chat selection
+    setChatToDelete(chatId);
+    setModalOpen(true);
+  };
+  
+  // Handle confirm delete in modal
+  const handleConfirmDelete = async () => {
+    console.log("Confirming delete for chat ID:", chatToDelete);
+    if (chatToDelete) {
+      setIsDeleting(true); // Show loading animation
+      try {
+        console.log("Calling deleteChatHistory with ID:", chatToDelete);
+        const success = await deleteChatHistory(chatToDelete);
+        console.log("Delete operation result:", success);
+        if (success) {
+          console.log("Delete was successful, updating UI");
+          // If the deleted chat was selected, reset selection
+          if (chatToDelete === selectedChatId) {
+            console.log("Resetting selected chat ID as it was deleted");
+            setSelectedChatId(null);
+          }
+        } else {
+          console.error("Delete operation failed");
+        }
+      } catch (error) {
+        console.error("Error during deletion:", error);
+      } finally {
+        setIsDeleting(false); // Hide loading animation
+      }
+    } else {
+      console.error("No chat ID to delete");
+    }
+    setModalOpen(false);
+    setChatToDelete(null);
+  };
+  
+  // Handle cancel delete in modal
+  const handleCancelDelete = () => {
+    setModalOpen(false);
+    setChatToDelete(null);
   };
 
   const handleChatHistorySelect = async (chatHistoryId) => {
@@ -187,15 +236,6 @@ const Sidebar: React.FC = () => {
     groupChatHistoriesByDate();
     setCurResult("ask");
     setNewChat(true);
-    const savedState = localStorage.getItem("isOpen");
-
-    setIsPatientListOpen(false); // Sync state on initial render
-
-    const result = localStorage.getItem("isOpen");
-
-    if (savedState !== null) {
-      setIsManagementOpen(result === "true"); // Sync state on initial render
-    }
 
     const setResult = localStorage.getItem("selectedResult");
     setCurResult(String(setResult));
@@ -214,11 +254,20 @@ const Sidebar: React.FC = () => {
     fetchChatHistories();
   }, [fetchChatHistories]);
   
-  // Update history groups when chatHistories changes
-  useEffect(() => {
-    console.log("Sidebar: chatHistories changed, regrouping");
-    groupChatHistoriesByDate();
+  // Memoize the chat history IDs to detect actual data changes
+  const chatHistoryIds = useMemo(() => {
+    return Array.isArray(chatHistories) 
+      ? chatHistories.map(chat => chat._id).join(',')
+      : '';
   }, [chatHistories]);
+  
+  // Update history groups when chatHistories changes (using the memoized IDs)
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'production') {
+      console.log("Sidebar: chatHistories changed, regrouping");
+    }
+    groupChatHistoriesByDate();
+  }, [chatHistoryIds, groupChatHistoriesByDate]);
 
   const handleNewChat = () => {
     groupChatHistoriesByDate()
@@ -279,9 +328,20 @@ const Sidebar: React.FC = () => {
                         <li
                           key={chat._id}
                           className={`sidebar-menu-item chat-history-item ${chat._id === selectedChatId ? 'selected' : ''}`}
-                          onClick={() => handleChatHistorySelect(chat._id)}
                         >
-                          {chat.title}
+                          <div 
+                            className="chat-item-content"
+                            onClick={() => handleChatHistorySelect(chat._id)}
+                          >
+                            {chat.title}
+                          </div>
+                          <button 
+                            className="delete-chat-button"
+                            onClick={(e) => handleDeleteClick(e, chat._id)}
+                            aria-label="Delete chat"
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </button>
                         </li>
                       ))}
                     </>
@@ -294,10 +354,21 @@ const Sidebar: React.FC = () => {
                         <li
                           key={chat._id}
                           className={`sidebar-menu-item chat-history-item ${chat._id === selectedChatId ? 'selected' : ''}`}
-                          onClick={() => handleChatHistorySelect(chat._id)}
                         >
-                          <FontAwesomeIcon icon={faQuestionCircle} className="mr-2" />
-                          {chat.title}
+                          <div 
+                            className="chat-item-content"
+                            onClick={() => handleChatHistorySelect(chat._id)}
+                          >
+                            <FontAwesomeIcon icon={faQuestionCircle} className="mr-2" />
+                            {chat.title}
+                          </div>
+                          <button 
+                            className="delete-chat-button"
+                            onClick={(e) => handleDeleteClick(e, chat._id)}
+                            aria-label="Delete chat"
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </button>
                         </li>
                       ))}
                     </>
@@ -310,10 +381,21 @@ const Sidebar: React.FC = () => {
                         <li
                           key={chat._id}
                           className={`sidebar-menu-item chat-history-item ${chat._id === selectedChatId ? 'selected' : ''}`}
-                          onClick={() => handleChatHistorySelect(chat._id)}
                         >
-                          <FontAwesomeIcon icon={faQuestionCircle} className="mr-2" />
-                          {chat.title}
+                          <div 
+                            className="chat-item-content"
+                            onClick={() => handleChatHistorySelect(chat._id)}
+                          >
+                            <FontAwesomeIcon icon={faQuestionCircle} className="mr-2" />
+                            {chat.title}
+                          </div>
+                          <button 
+                            className="delete-chat-button"
+                            onClick={(e) => handleDeleteClick(e, chat._id)}
+                            aria-label="Delete chat"
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </button>
                         </li>
                       ))}
                     </>
@@ -326,10 +408,21 @@ const Sidebar: React.FC = () => {
                         <li
                           key={chat._id}
                           className={`sidebar-menu-item chat-history-item ${chat._id === selectedChatId ? 'selected' : ''}`}
-                          onClick={() => handleChatHistorySelect(chat._id)}
                         >
-                          <FontAwesomeIcon icon={faQuestionCircle} className="mr-2" />
-                          {chat.title}
+                          <div 
+                            className="chat-item-content"
+                            onClick={() => handleChatHistorySelect(chat._id)}
+                          >
+                            <FontAwesomeIcon icon={faQuestionCircle} className="mr-2" />
+                            {chat.title}
+                          </div>
+                          <button 
+                            className="delete-chat-button"
+                            onClick={(e) => handleDeleteClick(e, chat._id)}
+                            aria-label="Delete chat"
+                          >
+                            <FontAwesomeIcon icon={faTrash} />
+                          </button>
                         </li>
                       ))}
                     </>
@@ -340,6 +433,22 @@ const Sidebar: React.FC = () => {
           </div>
         </ul>
       </div>
+      
+      {/* Loading overlay */}
+      {isDeleting && (
+        <LoadingAnimation 
+          title="Deleting Chat" 
+          subtitle="Please wait while the chat history is being deleted..." 
+        />
+      )}
+      
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={modalOpen}
+        message="Are you sure you want to delete this chat history? This action cannot be undone."
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+      />
     </div>
   );
 };
