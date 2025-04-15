@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import "../styles/AskAnything.css";
-import LoadingAnimation from "./LoadingAnimation.tsx";
+import LoadingAnimation from "./LoadingAnimation";
 import { API_URL } from "../utils/utils.js";
 import { AppContext } from "../context/AppContext";
 
@@ -21,6 +21,7 @@ interface Message {
   isLegalDraft?: boolean;  // Field to identify legal drafts
   draftContent?: string;   // Field to store the JSON draft content
   isExpanded?: boolean;    // New field to track if a long message is expanded
+  sourceFiles?: string[];  // Field to store source file names used for legal drafts
 }
 
 // Component to display legal drafts in a split view
@@ -140,7 +141,8 @@ const AskAnything: React.FC = () => {
         type: msg.role as "system" | "user" | "assistant",
         content: msg.content,
         isLegalDraft: msg.isLegalDraft || false,
-        draftContent: msg.draftContent || null
+        draftContent: msg.draftContent || null,
+        sourceFiles: msg.sourceFiles || []
       })));
       
       // Also update chatHistoryId
@@ -151,23 +153,26 @@ const AskAnything: React.FC = () => {
     }
   }, [currentChatHistory]);
 
+  // Debug flag - set to false to disable debug logs
+  const DEBUG = false;
+
   // Effect to handle URL changes and direct chat ID loading
   useEffect(() => {
     const loadChatFromUrl = async () => {
-      // Only log in development to avoid console spam
-      if (process.env.NODE_ENV !== 'production') {
+      // Only log if debug is enabled
+      if (DEBUG) {
         console.log("loadChatFromUrl called, chatId:", chatId, "previous chatHistoryId:", chatHistoryId);
       }
       
       // Only load chat history if chatId is not null and different from current chatHistoryId
       if (chatId !== null && chatId !== chatHistoryId) {
-        if (process.env.NODE_ENV !== 'production') {
+        if (DEBUG) {
           console.log("Loading chat history for chatId:", chatId);
         }
         setChatHistoryId(chatId);
         
         try {
-          if (process.env.NODE_ENV !== 'production') {
+          if (DEBUG) {
             console.log("Fetching chat history from API...");
           }
           const response = await fetch(`${API_URL}/chat-history/conversation/${chatId}`);
@@ -178,7 +183,7 @@ const AskAnything: React.FC = () => {
           
           const history = await response.json();
           
-          if (process.env.NODE_ENV !== 'production') {
+          if (DEBUG) {
             console.log("Received chat history from API");
           }
           
@@ -189,7 +194,8 @@ const AskAnything: React.FC = () => {
               type: msg.role as "system" | "user" | "assistant",
               content: msg.content,
               isLegalDraft: msg.isLegalDraft || false,
-              draftContent: msg.draftContent || null
+              draftContent: msg.draftContent || null,
+              sourceFiles: msg.sourceFiles || []
             }));
             
             setMessages(newMessages);
@@ -198,7 +204,7 @@ const AskAnything: React.FC = () => {
             const updatedHistory = JSON.parse(JSON.stringify(history));
             setCurrentChatHistory(updatedHistory);
           } else {
-            if (process.env.NODE_ENV !== 'production') {
+            if (DEBUG) {
               console.log("No messages found in chat history or history is null");
             }
             // Set a default message if no messages found
@@ -278,9 +284,9 @@ const AskAnything: React.FC = () => {
         }),
       });
 
-      console.log("response === ", response);
       
       const data = await response.json();
+      console.log("response === ", data.sourceFiles || []);
 
       const assistantMessage: Message = {
         id: messages.length + 2,
@@ -290,7 +296,13 @@ const AskAnything: React.FC = () => {
         fileName: data.fileName,
         isLegalDraft: data.isLegalDraft || false,
         draftContent: data.draftContent || null,
+        sourceFiles: data.sourceFiles || [],
       };
+      
+      // Log source files if available
+      if (data.sourceFiles && data.sourceFiles.length > 0) {
+        console.log('Draft created using knowledge from:', data.sourceFiles);
+      }
 
       setMessages((prev) => [...prev, assistantMessage]);
       
@@ -365,14 +377,21 @@ const AskAnything: React.FC = () => {
           )}
           <div className="message-bubble">
             {message.isLegalDraft && message.content ? (
-              <div 
-                className="legal-draft-message"
-                onClick={() => {
-                  setSelectedDraft(message.content || null);
-                  setPdfUrl(null); // Clear any PDF that might be showing
-                }}
-              >
-                Here is your draft: <span className="view-draft-link">(Click to view)</span>
+              <div>
+                <div 
+                  className="legal-draft-message"
+                  onClick={() => {
+                    setSelectedDraft(message.content || null);
+                    setPdfUrl(null); // Clear any PDF that might be showing
+                  }}
+                >
+                  Here is your draft: <span className="view-draft-link">(Click to view)</span>
+                </div>
+                {message.sourceFiles && message.sourceFiles.length > 0 && (
+                  <div className="source-files">
+                    <small>Sources: {message.sourceFiles.join(', ')}</small>
+                  </div>
+                )}
               </div>
             ) : (
               <div

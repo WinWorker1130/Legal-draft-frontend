@@ -589,6 +589,16 @@ body {
   font-size: 0.9em;
 }
 
+.source-files {
+  margin-top: 8px;
+  font-style: italic;
+  color: #718096;
+}
+
+.source-files small {
+  font-size: 0.85em;
+}
+
 /* Legal Draft View Styles */
 .legal-draft-container {
   display: flex;
