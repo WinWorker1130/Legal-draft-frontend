@@ -1,7 +1,14 @@
 /* Sidebar.css */
 
 .sidebar {
-  position: relative; /* Ensure the loading animation is positioned relative to the sidebar */
+  background: #e2e8f011;
+  backdrop-filter: blur(2.625rem);
+  box-shadow: rgba(255, 255, 255, 0.9) 0rem 0rem 0.0625rem 0.0625rem inset, rgba(0, 0, 0, 0.05) 0rem 1.25rem 1.6875rem 0rem;
+  box-sizing: border-box;
+  border-radius: 20px;
+  border-color: rgba(226, 232, 240, 0.3);
+  width: 100%;
+  height: 100vh;
 }
 
 .chat-history-item {

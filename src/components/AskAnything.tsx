@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import "../styles/AskAnything.css";
-import LoadingAnimation from "./LoadingAnimation";
+import LoadingAnimation from "./LoadingAnimation.tsx";
 import { API_URL } from "../utils/utils.js";
 import { AppContext } from "../context/AppContext";
 
@@ -417,87 +417,6 @@ const AskAnything: React.FC = () => {
         />
       ) : (
         <div className={`ask-anything-container ${pdfUrl ? "with-pdf" : ""}`}>
-          <div className="chat-section">
-            <div className="chat-header">
-              <h1>Ask Anything</h1>
-              <p>Ask questions about anything</p>
-            </div>
-            <div className="chat-window">
-              <div className="messages-container">
-                {messages.map((message) => (
-                  <div key={message.id}>{renderMessage(message)}</div>
-                ))}
-                {isLoading && (
-                  <div className="message assistant">
-                    <div className="message-content">
-                      <div className="assistant-icon">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <circle cx="12" cy="12" r="10" />
-                          <path d="M12 16v-4" />
-                          <path d="M12 8h.01" />
-                        </svg>
-                      </div>
-                      <div className="message-bubble">
-                        <div className="typing-indicator">
-                          <span></span>
-                          <span></span>
-                          <span></span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-              <form onSubmit={handleSubmit} className="input-container">
-                <textarea
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      if (!e.shiftKey) {
-                        e.preventDefault(); // Prevent default to avoid adding a newline
-                        handleSubmit(e); // Submit the form
-                      }
-                      // If Shift+Enter, do nothing and let the default behavior (new line) occur
-                    }
-                  }}
-                  placeholder="Type your question..."
-                  disabled={isLoading}
-                  rows={1}
-                />
-                <button
-                  type="submit"
-                  disabled={isLoading || !inputMessage.trim()}
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <line x1="22" y1="2" x2="11" y2="13" />
-                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                  </svg>
-                </button>
-              </form>
-            </div>
-          </div>
           {selectedDraft ? (
             <div className="pdf-section">
               <div className="pdf-header">
@@ -542,6 +461,7 @@ const AskAnything: React.FC = () => {
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
+                  style={{color: "white"}}
                 >
                   <path
                     strokeLinecap="round"
@@ -550,10 +470,102 @@ const AskAnything: React.FC = () => {
                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                   />
                 </svg>
-                <h3>There is nothing to display</h3>
+                <h3 style={{color: "white"}}>There is nothing to display</h3>
               </div>
             </div>
           )}
+          <div className="chat-section">
+            <div className="chat-header">
+              <h1>Ask Anything</h1>
+              <p>Ask questions about anything</p>
+            </div>
+            <div className="chat-window">
+              <div className="messages-container">
+                {messages.map((message) => (
+                  <div key={message.id}>{renderMessage(message)}</div>
+                ))}
+                {isLoading && (
+                  <div className="message assistant">
+                    <div className="message-content">
+                      <div className="assistant-icon">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="24"
+                          height="24"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M12 16v-4" />
+                          <path d="M12 8h.01" />
+                        </svg>
+                      </div>
+                      <div className="message-bubble">
+                        <div className="llm-analyzing-spinner">
+                          <div className="spinner-bars" aria-label="Loading">
+                            <div className="spinner-bar bar1"></div>
+                            <div className="spinner-bar bar2"></div>
+                            <div className="spinner-bar bar3"></div>
+                            <div className="spinner-bar bar4"></div>
+                            <div className="spinner-bar bar5"></div>
+                            <div className="spinner-bar bar6"></div>
+                            <div className="spinner-bar bar7"></div>
+                            <div className="spinner-bar bar8"></div>
+                            <div className="spinner-bar bar9"></div>
+                            <div className="spinner-bar bar10"></div>
+                            <div className="spinner-bar bar11"></div>
+                            <div className="spinner-bar bar12"></div>
+                          </div>
+                          <span className="analyzing-text">Thinking...</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+              <form onSubmit={handleSubmit} className="input-container">
+                <textarea
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (!e.shiftKey) {
+                        e.preventDefault(); // Prevent default to avoid adding a newline
+                        handleSubmit(e); // Submit the form
+                      }
+                      // If Shift+Enter, do nothing and let the default behavior (new line) occur
+                    }
+                  }}
+                  placeholder="Type your question..."
+                  disabled={isLoading}
+                />
+                <button
+                  type="submit"
+                  disabled={isLoading || !inputMessage.trim()}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="24"
+                    height="24"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <line x1="22" y1="2" x2="11" y2="13" />
+                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                  </svg>
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
       )}
     </>

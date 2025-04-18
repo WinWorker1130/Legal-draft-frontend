@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faQuestionCircle, faComment, faTrash } from "@fortawesome/free-solid-svg-icons";
+import { faQuestionCircle, faComment, faTrash, faChartLine } from "@fortawesome/free-solid-svg-icons";
 import { AppContext } from "../context/AppContext";
 import { API_URL } from "../utils/utils";
 import ConfirmationModal from "./ConfirmationModal.tsx";
@@ -288,167 +288,169 @@ const Sidebar: React.FC = () => {
   };
 
   return (
-    <div className="sidebar">
-      {/* New Chat Button */}
-      <div className="new-chat-button-container">
-        <button className="new-chat-button" onClick={handleNewChat}>
-          <FontAwesomeIcon icon={faComment} className="mr-2" />
-          <span>New Chat</span>
-        </button>
-      </div>
+    <div style={{padding: "10px", width: "15%"}}>
+      <div className="sidebar">
+        {/* New Chat Button */}
+        <div className="new-chat-button-container">
+          <button className="new-chat-button" onClick={handleNewChat}>
+            <FontAwesomeIcon icon={faComment} className="mr-2" />
+            <span>New Chat</span>
+          </button>
+        </div>
 
-      {/* Chat History Section */}
-      <div className="sidebar-section">
-        <div className="sidebar-section-title">CHAT HISTORY</div>
-        <ul className="sidebar-menu">
-          <div className="chat-history-list">
-            {/* Group chat histories by date */}
-            {(() => {
-              // Check if there are any chat histories
-              const hasHistories = 
-                historyCroup && historyCroup.today.length > 0 || 
-                historyCroup && historyCroup.yesterday.length > 0 || 
-                historyCroup && historyCroup.previousWeek.length > 0 || 
-                historyCroup && historyCroup.older.length > 0;
-              
-              if (!hasHistories) {
+        {/* Chat History Section */}
+        <div className="sidebar-section">
+          <div className="sidebar-section-title">CHAT HISTORY</div>
+          <ul className="sidebar-menu">
+            <div className="chat-history-list">
+              {/* Group chat histories by date */}
+              {(() => {
+                // Check if there are any chat histories
+                const hasHistories = 
+                  historyCroup && historyCroup.today.length > 0 || 
+                  historyCroup && historyCroup.yesterday.length > 0 || 
+                  historyCroup && historyCroup.previousWeek.length > 0 || 
+                  historyCroup && historyCroup.older.length > 0;
+                
+                if (!hasHistories) {
+                  return (
+                    <div className="no-chat-history">
+                      <p>No chat history yet</p>
+                    </div>
+                  );
+                }
+                
                 return (
-                  <div className="no-chat-history">
-                    <p>No chat history yet</p>
-                  </div>
+                  <>
+                    {historyCroup.today.length > 0 && (
+                      <>
+                        <div className="chat-history-date-header">Today</div>
+                        {historyCroup.today.map(chat => (
+                          <li
+                            key={chat._id}
+                            className={`sidebar-menu-item chat-history-item ${chat._id === selectedChatId ? 'selected' : ''}`}
+                          >
+                            <div 
+                              className="chat-item-content"
+                              onClick={() => handleChatHistorySelect(chat._id)}
+                            >
+                              {chat.title}
+                            </div>
+                            <button 
+                              className="delete-chat-button"
+                              onClick={(e) => handleDeleteClick(e, chat._id)}
+                              aria-label="Delete chat"
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </button>
+                          </li>
+                        ))}
+                      </>
+                    )}
+                    
+                    {historyCroup && historyCroup.yesterday.length > 0 && (
+                      <>
+                        <div className="chat-history-date-header">Yesterday</div>
+                        {historyCroup.yesterday.map(chat => (
+                          <li
+                            key={chat._id}
+                            className={`sidebar-menu-item chat-history-item ${chat._id === selectedChatId ? 'selected' : ''}`}
+                          >
+                            <div 
+                              className="chat-item-content"
+                              onClick={() => handleChatHistorySelect(chat._id)}
+                            >
+                              <FontAwesomeIcon icon={faQuestionCircle} className="mr-2" />
+                              {chat.title}
+                            </div>
+                            <button 
+                              className="delete-chat-button"
+                              onClick={(e) => handleDeleteClick(e, chat._id)}
+                              aria-label="Delete chat"
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </button>
+                          </li>
+                        ))}
+                      </>
+                    )}
+                    
+                    {historyCroup.previousWeek.length > 0 && (
+                      <>
+                        <div className="chat-history-date-header">Previous 7 Days</div>
+                        {historyCroup.previousWeek.map(chat => (
+                          <li
+                            key={chat._id}
+                            className={`sidebar-menu-item chat-history-item ${chat._id === selectedChatId ? 'selected' : ''}`}
+                          >
+                            <div 
+                              className="chat-item-content"
+                              onClick={() => handleChatHistorySelect(chat._id)}
+                            >
+                              <FontAwesomeIcon icon={faQuestionCircle} className="mr-2" />
+                              {chat.title}
+                            </div>
+                            <button 
+                              className="delete-chat-button"
+                              onClick={(e) => handleDeleteClick(e, chat._id)}
+                              aria-label="Delete chat"
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </button>
+                          </li>
+                        ))}
+                      </>
+                    )}
+                    
+                    {historyCroup.older.length > 0 && (
+                      <>
+                        <div className="chat-history-date-header">Older</div>
+                        {historyCroup.older.map(chat => (
+                          <li
+                            key={chat._id}
+                            className={`sidebar-menu-item chat-history-item ${chat._id === selectedChatId ? 'selected' : ''}`}
+                          >
+                            <div 
+                              className="chat-item-content"
+                              onClick={() => handleChatHistorySelect(chat._id)}
+                            >
+                              <FontAwesomeIcon icon={faQuestionCircle} className="mr-2" />
+                              {chat.title}
+                            </div>
+                            <button 
+                              className="delete-chat-button"
+                              onClick={(e) => handleDeleteClick(e, chat._id)}
+                              aria-label="Delete chat"
+                            >
+                              <FontAwesomeIcon icon={faTrash} />
+                            </button>
+                          </li>
+                        ))}
+                      </>
+                    )}
+                  </>
                 );
-              }
-              
-              return (
-                <>
-                  {historyCroup.today.length > 0 && (
-                    <>
-                      <div className="chat-history-date-header">Today</div>
-                      {historyCroup.today.map(chat => (
-                        <li
-                          key={chat._id}
-                          className={`sidebar-menu-item chat-history-item ${chat._id === selectedChatId ? 'selected' : ''}`}
-                        >
-                          <div 
-                            className="chat-item-content"
-                            onClick={() => handleChatHistorySelect(chat._id)}
-                          >
-                            {chat.title}
-                          </div>
-                          <button 
-                            className="delete-chat-button"
-                            onClick={(e) => handleDeleteClick(e, chat._id)}
-                            aria-label="Delete chat"
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </button>
-                        </li>
-                      ))}
-                    </>
-                  )}
-                  
-                  {historyCroup && historyCroup.yesterday.length > 0 && (
-                    <>
-                      <div className="chat-history-date-header">Yesterday</div>
-                      {historyCroup.yesterday.map(chat => (
-                        <li
-                          key={chat._id}
-                          className={`sidebar-menu-item chat-history-item ${chat._id === selectedChatId ? 'selected' : ''}`}
-                        >
-                          <div 
-                            className="chat-item-content"
-                            onClick={() => handleChatHistorySelect(chat._id)}
-                          >
-                            <FontAwesomeIcon icon={faQuestionCircle} className="mr-2" />
-                            {chat.title}
-                          </div>
-                          <button 
-                            className="delete-chat-button"
-                            onClick={(e) => handleDeleteClick(e, chat._id)}
-                            aria-label="Delete chat"
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </button>
-                        </li>
-                      ))}
-                    </>
-                  )}
-                  
-                  {historyCroup.previousWeek.length > 0 && (
-                    <>
-                      <div className="chat-history-date-header">Previous 7 Days</div>
-                      {historyCroup.previousWeek.map(chat => (
-                        <li
-                          key={chat._id}
-                          className={`sidebar-menu-item chat-history-item ${chat._id === selectedChatId ? 'selected' : ''}`}
-                        >
-                          <div 
-                            className="chat-item-content"
-                            onClick={() => handleChatHistorySelect(chat._id)}
-                          >
-                            <FontAwesomeIcon icon={faQuestionCircle} className="mr-2" />
-                            {chat.title}
-                          </div>
-                          <button 
-                            className="delete-chat-button"
-                            onClick={(e) => handleDeleteClick(e, chat._id)}
-                            aria-label="Delete chat"
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </button>
-                        </li>
-                      ))}
-                    </>
-                  )}
-                  
-                  {historyCroup.older.length > 0 && (
-                    <>
-                      <div className="chat-history-date-header">Older</div>
-                      {historyCroup.older.map(chat => (
-                        <li
-                          key={chat._id}
-                          className={`sidebar-menu-item chat-history-item ${chat._id === selectedChatId ? 'selected' : ''}`}
-                        >
-                          <div 
-                            className="chat-item-content"
-                            onClick={() => handleChatHistorySelect(chat._id)}
-                          >
-                            <FontAwesomeIcon icon={faQuestionCircle} className="mr-2" />
-                            {chat.title}
-                          </div>
-                          <button 
-                            className="delete-chat-button"
-                            onClick={(e) => handleDeleteClick(e, chat._id)}
-                            aria-label="Delete chat"
-                          >
-                            <FontAwesomeIcon icon={faTrash} />
-                          </button>
-                        </li>
-                      ))}
-                    </>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-        </ul>
-      </div>
-      
-      {/* Loading overlay */}
-      {isDeleting && (
-        <LoadingAnimation 
-          title="Deleting Chat" 
-          subtitle="Please wait while the chat history is being deleted..." 
+              })()}
+            </div>
+          </ul>
+        </div>
+        
+        {/* Loading overlay */}
+        {isDeleting && (
+          <LoadingAnimation 
+            title="Deleting Chat" 
+            subtitle="Please wait while the chat history is being deleted..." 
+          />
+        )}
+        
+        {/* Confirmation Modal */}
+        <ConfirmationModal
+          isOpen={modalOpen}
+          message="Are you sure you want to delete this chat history? This action cannot be undone."
+          onConfirm={handleConfirmDelete}
+          onCancel={handleCancelDelete}
         />
-      )}
-      
-      {/* Confirmation Modal */}
-      <ConfirmationModal
-        isOpen={modalOpen}
-        message="Are you sure you want to delete this chat history? This action cannot be undone."
-        onConfirm={handleConfirmDelete}
-        onCancel={handleCancelDelete}
-      />
+      </div>
     </div>
   );
 };
