@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useContext } from "react";
 import "../styles/AskAnything.css";
 import LoadingAnimation from "./LoadingAnimation.tsx";
+import DocumentViewer from "./DocumentViewer.tsx";
 import { API_URL } from "../utils/utils.js";
 import { AppContext } from "../context/AppContext";
 
@@ -10,6 +11,12 @@ interface Reference {
   startChar?: number;
   endChar?: number;
   excerpt: string;
+}
+
+interface SourceDocument {
+  filename: string;
+  source?: 's3' | 'local';
+  s3Key?: string;
 }
 
 interface Message {
@@ -22,6 +29,7 @@ interface Message {
   draftContent?: string;   // Field to store the JSON draft content
   isExpanded?: boolean;    // New field to track if a long message is expanded
   sourceFiles?: string[];  // Field to store source file names used for legal drafts
+  sourceDocuments?: SourceDocument[];  // Field to store detailed source document info
 }
 
 // Component to display legal drafts in a split view
@@ -56,6 +64,7 @@ const AskAnything: React.FC = () => {
   const [componentLoading, setComponentLoading] = useState(true);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [selectedDraft, setSelectedDraft] = useState<string | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<SourceDocument | null>(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [chatHistoryId, setChatHistoryId] = useState<string | null>(null);
 
@@ -142,7 +151,8 @@ const AskAnything: React.FC = () => {
         content: msg.content,
         isLegalDraft: msg.isLegalDraft || false,
         draftContent: msg.draftContent || null,
-        sourceFiles: msg.sourceFiles || []
+        sourceFiles: msg.sourceFiles || [],
+        sourceDocuments: msg.sourceDocuments || []
       })));
       
       // Also update chatHistoryId
@@ -195,7 +205,8 @@ const AskAnything: React.FC = () => {
               content: msg.content,
               isLegalDraft: msg.isLegalDraft || false,
               draftContent: msg.draftContent || null,
-              sourceFiles: msg.sourceFiles || []
+              sourceFiles: msg.sourceFiles || [],
+              sourceDocuments: msg.sourceDocuments || []
             }));
             
             setMessages(newMessages);
@@ -288,6 +299,13 @@ const AskAnything: React.FC = () => {
       const data = await response.json();
       console.log("response === ", data.sourceFiles || []);
 
+      // Convert sourceFiles to sourceDocuments if needed
+      const sourceDocuments = data.sourceDocuments || 
+        (data.sourceFiles ? data.sourceFiles.map(filename => ({
+          filename,
+          source: 'local'
+        })) : []);
+
       const assistantMessage: Message = {
         id: messages.length + 2,
         type: "assistant",
@@ -297,11 +315,12 @@ const AskAnything: React.FC = () => {
         isLegalDraft: data.isLegalDraft || false,
         draftContent: data.draftContent || null,
         sourceFiles: data.sourceFiles || [],
+        sourceDocuments: sourceDocuments
       };
       
       // Log source files if available
-      if (data.sourceFiles && data.sourceFiles.length > 0) {
-        console.log('Draft created using knowledge from:', data.sourceFiles);
+      if (sourceDocuments.length > 0) {
+        console.log('Draft created using knowledge from:', sourceDocuments.map(doc => doc.filename).join(', '));
       }
 
       setMessages((prev) => [...prev, assistantMessage]);
@@ -387,9 +406,43 @@ const AskAnything: React.FC = () => {
                 >
                   Here is your draft: <span className="view-draft-link">(Click to view)</span>
                 </div>
-                {message.sourceFiles && message.sourceFiles.length > 0 && (
+                {(message.sourceDocuments && message.sourceDocuments.length > 0) ? (
                   <div className="source-files">
-                    <small>Sources: {message.sourceFiles.join(', ')}</small>
+                    <small>Sources: </small>
+                    {message.sourceDocuments.map((doc, index) => (
+                      <span 
+                        key={index} 
+                        className="source-document-link"
+                        onClick={() => {
+                          setSelectedDocument(doc);
+                          setPdfUrl(null); // Clear any PDF that might be showing
+                          setSelectedDraft(null); // Clear any draft that might be showing
+                        }}
+                      >
+                        {doc.filename}
+                        {doc.source === 's3' && <small> (S3)</small>}
+                      </span>
+                    ))}
+                  </div>
+                ) : (message.sourceFiles && message.sourceFiles.length > 0) && (
+                  <div className="source-files">
+                    <small>Sources: </small>
+                    {message.sourceFiles.map((file, index) => (
+                      <span 
+                        key={index} 
+                        className="source-document-link"
+                        onClick={() => {
+                          setSelectedDocument({
+                            filename: file,
+                            source: 'local'
+                          });
+                          setPdfUrl(null); // Clear any PDF that might be showing
+                          setSelectedDraft(null); // Clear any draft that might be showing
+                        }}
+                      >
+                        {file}
+                      </span>
+                    ))}
                   </div>
                 )}
               </div>
@@ -417,7 +470,16 @@ const AskAnything: React.FC = () => {
         />
       ) : (
         <div className={`ask-anything-container ${pdfUrl ? "with-pdf" : ""}`}>
-          {selectedDraft ? (
+          {selectedDocument ? (
+            <div className="pdf-section">
+              <DocumentViewer 
+                filename={selectedDocument.filename} 
+                source={selectedDocument.source}
+                s3Key={selectedDocument.s3Key}
+                onClose={() => setSelectedDocument(null)} 
+              />
+            </div>
+          ) : selectedDraft ? (
             <div className="pdf-section">
               <div className="pdf-header">
                 <h3>Legal Draft</h3>

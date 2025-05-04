@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "legaldraft-30cc0"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }
